@@ -1,0 +1,10 @@
+[package]
+name = "common-crypto"
+version = "0.1.0"
+authors = ["Steven Joruk <steven@joruk.com>"]
+edition = "2018"
+license = "MIT"
+description = "Bindings to Apple's Common Crypto library"
+repository = "https://github.com/steven-joruk/common-crypto"
+keywords = ["crypto"]
+categories = ["os::macos-apis", "cryptography", "api-bindings"]
