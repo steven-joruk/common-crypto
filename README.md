@@ -40,7 +40,6 @@ assert_eq!(decrypted, b"Hello");
 * CCHMac
 * CC_MD*
 * CC_SHA*
-* Documentation, look at the unit tests for now.
 
 ## Contributing
 

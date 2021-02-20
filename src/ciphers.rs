@@ -1,5 +1,8 @@
 use crate::Algorithm;
 
+/// Details about each cipher so that you can create appropriately sized data
+/// to pass to [CryptorBuilder](`crate::CryptorBuilder`) and
+/// [Cryptor](`crate::Cryptor`).
 pub trait Cipher: std::fmt::Debug {
     fn to_algorithm() -> Algorithm;
     fn block_size() -> usize;
