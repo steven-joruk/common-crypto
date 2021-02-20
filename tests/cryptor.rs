@@ -1,4 +1,4 @@
-use common_crypto::*;
+use common_crypto::cryptor::*;
 
 #[test]
 fn small_keys() {

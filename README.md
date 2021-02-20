@@ -37,7 +37,8 @@ assert_eq!(decrypted, b"Hello");
 
 ## What's missing?
 
-* CCHMac
+* Streaming support for CCHMac
+* Single shot encryption and decryption for CCCryptor
 * CC_MD*
 * CC_SHA*
 
