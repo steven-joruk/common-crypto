@@ -1,4 +1,8 @@
-# common-crypto [![Actions Status](https://github.com/steven-joruk/common-crypto/actions/workflows/rust.yml/badge.svg)](https://github.com/steven-joruk/common-crypto/actions)
+# common-crypto
+
+[![github action](https://github.com/steven-joruk/common-crypto/actions/workflows/rust.yml/badge.svg)](https://github.com/steven-joruk/common-crypto/actions)
+[![crates.io](https://img.shields.io/crates/v/common-crypto)](https://crates.io/crates/common-crypto)
+[![docs.rs](https://docs.rs/common-crypto/badge.svg)](https://docs.rs/common-crypto)
 
 Bindings for Apple's Common Crypto APIs.
 
