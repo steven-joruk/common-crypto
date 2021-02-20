@@ -52,6 +52,11 @@ where
         self
     }
 
+    pub fn rounds(mut self, rounds: usize) -> Self {
+        self.rounds = rounds;
+        self
+    }
+
     fn build(self, operation: Operation) -> Result<Cryptor<T>, CryptorError> {
         let mut handle: CCCryptorRef = std::ptr::null_mut();
         let iv_ptr = iv_ptr_if_required::<T>(&self.iv, self.mode)?;
