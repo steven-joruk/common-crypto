@@ -8,3 +8,4 @@ description = "Bindings to Apple's Common Crypto library"
 repository = "https://github.com/steven-joruk/common-crypto"
 keywords = ["crypto"]
 categories = ["os::macos-apis", "cryptography", "api-bindings"]
+readme = "README.md"
