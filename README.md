@@ -10,28 +10,18 @@ Bindings for Apple's Common Crypto APIs.
 
 ```toml
 [dependencies]
-common-crypto = "0.1"
+common-crypto = "0.2"
 ```
 
 ```rust
-use common_crypto::{AES256, CryptorBuilder, Mode};
+let config = Config::AES256 {
+    mode: Mode::CTR,
+    iv: Some(b"use random iv :)"),
+    key: b"0123456789abcdef0123456789abcdef",
+};
 
-let encryptor = CryptorBuilder::<AES256>::new(Mode::CTR, b"0123456789abcdef")
-    .iv(b"use random iv :)")
-    .encryptor()
-    .unwrap();
-
-let mut encrypted = Vec::new();
-encryptor.update(b"Hello", &mut encrypted).unwrap();
-
-let decryptor = CryptorBuilder::<AES256>::new(Mode::CTR, b"0123456789abcdef")
-    .iv(b"use random iv :)")
-    .decryptor()
-    .unwrap();
-
-let mut decrypted = Vec::new();
-decryptor.update(&encrypted, &mut decrypted).unwrap();
-
+let encrypted = Cryptor::encrypt(&config, b"Hello").unwrap();
+let decrypted = Cryptor::encrypt(&config, encrypted).unwrap();
 assert_eq!(decrypted, b"Hello");
 ```
 
