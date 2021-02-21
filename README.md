@@ -21,7 +21,7 @@ let config = Config::AES256 {
 };
 
 let encrypted = Cryptor::encrypt(&config, b"Hello").unwrap();
-let decrypted = Cryptor::encrypt(&config, encrypted).unwrap();
+let decrypted = Cryptor::decrypt(&config, encrypted).unwrap();
 assert_eq!(decrypted, b"Hello");
 ```
 

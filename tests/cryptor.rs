@@ -19,7 +19,8 @@ fn aes256_round_trip() {
     };
 
     let encrypted = Cryptor::encrypt(&config, b"Hello").unwrap();
-    let decrypted = Cryptor::encrypt(&config, encrypted).unwrap();
+    assert!(!encrypted.is_empty());
+    let decrypted = Cryptor::decrypt(&config, encrypted).unwrap();
     assert_eq!(decrypted, b"Hello");
 }
 
