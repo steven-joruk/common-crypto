@@ -27,6 +27,19 @@ let decrypted = Cryptor::decrypt(&config, encrypted).unwrap();
 assert_eq!(decrypted, b"Hello");
 ```
 
+### Hash
+
+```rust
+let hash = Hash::sha256(b"data");
+```
+
+```rust
+let mut hasher = SHA256::new();
+hasher.update(b"data");
+hasher.update(b"more data");
+let hash = hasher.finish();
+```
+
 ### HMAC
 
 ```rust
@@ -37,7 +50,6 @@ let auth_code = HMac::sha512(b"Key", b"Input");
 
 * Streaming support for CCHMac.
 * CC_MD*
-* CC_SHA*
 * Resetting cryptors - I don't see a use case for this, so I won't implement it.
 * Padding and rounds for cryptors. I want to make sure they're only configurable
   where they're actually supported.
