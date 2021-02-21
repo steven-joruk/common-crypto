@@ -1,4 +1,10 @@
-use std::{ffi::c_void, fmt::Display, marker::PhantomData};
+// TODO: Note that Apple's implementation will malloc/copy keys to an aligned
+// buffer if necessary.
+
+// TODO: enum of all algorithms so that we can force iv, padding, etc. to be
+// provided if required.
+
+use std::{ffi::c_void, fmt::Display};
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -15,29 +21,30 @@ pub enum Mode {
     CBC = 2,
     CFB = 3,
     CTR = 4,
-    // kCCModeF8		= 5,
-    // kCCModeLRW		= 6,
+    // F8 = 5,
+    // LRW = 6,
     OFB = 7,
     XTS = 8,
-    RC4 = 9,
+    /// Must be specified for RC4, and must not be specified for others.
+    // RC4 = 9,
     CFB8 = 10,
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone)]
-enum Padding {
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum Padding {
     None = 0,
     PKCS7 = 1,
 }
 
-type Algorithm = u32;
 type CCCryptorRef = *mut c_void;
 
 extern "C" {
     fn CCCryptorCreateWithMode(
         operation: Operation,
-        mode: Mode,
-        algorithm: Algorithm,
+        mode: u32,
+        config: u32,
         padding: Padding,
         iv: *const c_void,
         key: *const c_void,
@@ -48,23 +55,6 @@ extern "C" {
         options: u32,
         handle: *mut CCCryptorRef,
     ) -> Status;
-
-    /* TODO
-        fn CCCrypt(
-            operation: Operation,
-            algorithm: Algorithm,
-            options: u32,
-            key: *const c_void,
-            key_length: usize,
-            iv: *const c_void,
-            input: *const c_void,
-            input_len: usize,
-            output: *mut c_void,
-            output_len: usize,
-            handle: *mut CCCryptorRef,
-            written: *mut usize,
-        ) -> Status;
-    */
 
     fn CCCryptorRelease(handle: CCCryptorRef) -> Status;
 
@@ -84,8 +74,6 @@ extern "C" {
         written: *mut usize,
     ) -> Status;
 
-    fn CCCryptorReset(handle: CCCryptorRef, iv: *const c_void) -> Status;
-
     fn CCCryptorGetOutputLength(handle: CCCryptorRef, input_len: usize, finishing: bool) -> usize;
 }
 
@@ -102,9 +90,7 @@ pub enum CryptorError {
     CallSequence,
     KeySize,
     Key,
-    InitializationVectorMissing,
     InitializationVectorPresent,
-    InitializationVectorSize,
     Unexpected(i32),
 }
 
@@ -124,10 +110,6 @@ impl Display for CryptorError {
             Self::KeySize => "key size is invalid",
             Self::Key => "key is invalid",
             Self::InitializationVectorPresent => "ECB mode does not support initialization vectors",
-            Self::InitializationVectorMissing => "the mode used requires an initialization vector",
-            Self::InitializationVectorSize => {
-                "the initialization vector provided is the incorrect size"
-            }
             Self::Unexpected(code) => {
                 let s = format!("unexpected error {}", code);
                 return f.write_str(&s);
@@ -176,146 +158,188 @@ impl Into<CryptorError> for Status {
     }
 }
 
-/// Details about each cipher so that you can create appropriately sized data
-/// to pass to [CryptorBuilder](`crate::cryptor::CryptorBuilder`) and
-/// [Cryptor](`crate::cryptor::Cryptor`).
-pub trait Cipher: std::fmt::Debug {
-    fn to_algorithm() -> Algorithm;
-    fn block_size() -> usize;
-    fn requires_iv() -> bool;
-    fn min_key_size() -> usize;
-    fn max_key_size() -> usize;
-}
-
-macro_rules! declare_cipher {
-    ($name:ident, $algorithm:expr, $block_size:expr, $requires_iv:expr, $min_key:expr, $max_key:expr) => {
-        #[derive(Debug)]
-        pub struct $name;
-
-        impl Cipher for $name {
-            fn to_algorithm() -> Algorithm {
-                $algorithm
-            }
-
-            fn block_size() -> usize {
-                $block_size
-            }
-
-            fn requires_iv() -> bool {
-                $requires_iv
-            }
-
-            fn min_key_size() -> usize {
-                $min_key
-            }
-
-            fn max_key_size() -> usize {
-                $max_key
-            }
-        }
-    };
-}
-
-declare_cipher!(AES128, 0, 16, true, 16, 16);
-declare_cipher!(AES192, 0, 16, true, 24, 24);
-declare_cipher!(AES256, 0, 16, true, 32, 32);
-declare_cipher!(DES, 1, 8, true, 8, 8);
-declare_cipher!(TDES, 2, 8, true, 24, 24);
-declare_cipher!(CAST, 3, 8, true, 5, 16);
-declare_cipher!(RC4, 4, 1, false, 1, 512);
-declare_cipher!(RC2, 5, 8, true, 1, 128);
-declare_cipher!(Blowfish, 6, 8, true, 8, 56);
-
-/// A way to conveniently build a [`Cryptor`].
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq)]
+/// The configuration for a [`Cryptor`].
 ///
 /// ```
-/// # use common_crypto::cryptor::{AES256, CryptorBuilder, Mode};
-/// let encryptor = CryptorBuilder::<AES256>::new(Mode::CTR, b"0123456789abcdef")
-///     .pkcs7_padding()
-///     .iv(b"use random iv :)")
-///     .encryptor()
-///     .unwrap();
+/// # use common_crypto::cryptor::{Config, Mode};
+/// let config = Config::AES256 {
+///     mode: Mode::CTR,
+///     iv: Some(b"use random iv :)"),
+///     key: b"aes128 key must be 32 bytes long",
+/// };
 /// ```
-pub struct CryptorBuilder<'a, T> {
-    key: &'a [u8],
-    padding: Padding,
-    rounds: usize,
-    mode: Mode,
-    iv: Option<&'a [u8]>,
-    _private: PhantomData<T>,
+// TODO: padding, rounds
+pub enum Config<'a> {
+    AES128 {
+        mode: Mode,
+        iv: Option<&'a [u8; 16]>,
+        key: &'a [u8; 16],
+    },
+    AES192 {
+        mode: Mode,
+        iv: Option<&'a [u8; 16]>,
+        key: &'a [u8; 24],
+    },
+    AES256 {
+        mode: Mode,
+        iv: Option<&'a [u8; 16]>,
+        key: &'a [u8; 32],
+    },
+    DES {
+        mode: Mode,
+        iv: Option<&'a [u8; 8]>,
+        key: &'a [u8; 8],
+    },
+    TDES {
+        mode: Mode,
+        iv: Option<&'a [u8; 8]>,
+        key: &'a [u8; 24],
+    },
+    CAST {
+        mode: Mode,
+        iv: Option<&'a [u8; 8]>,
+        /// Valid key sizes are between 5 and 24.
+        key: &'a [u8],
+        padding: Padding,
+    },
+    RC4 {
+        /// Valid key sizes are between 1 and 512.
+        key: &'a [u8],
+    },
+    RC2 {
+        mode: Mode,
+        iv: Option<&'a [u8; 8]>,
+        /// Valid key sizes are between 1 and 128.
+        key: &'a [u8],
+    },
+    Blowfish {
+        mode: Mode,
+        iv: Option<&'a [u8; 8]>,
+        /// Valid key sizes are between 8 and 56.
+        key: &'a [u8],
+    },
 }
 
-impl<'a, T> CryptorBuilder<'a, T>
-where
-    T: Cipher,
-{
-    /// Begins building a new [`Cryptor`]. The required key length can be found
-    /// using [`Cipher::min_key_size`] and [`Cipher::max_key_size`].
-    ///
-    /// All Ciphers other than [`RC4`] require an [`CryptorBuilder::iv`] to be
-    /// set, which differs in behaviour than the underlying `CCCryptor`
-    /// behaviour.
-    pub fn new(mode: Mode, key: &'a [u8]) -> Self {
-        CryptorBuilder {
-            key,
-            padding: Padding::None,
-            rounds: 0,
-            mode,
-            iv: None,
-            _private: PhantomData,
+impl<'a> From<&Config<'a>> for u32 {
+    fn from(config: &Config) -> Self {
+        match config {
+            Config::AES128 { .. } => 0,
+            Config::AES192 { .. } => 0,
+            Config::AES256 { .. } => 0,
+            Config::DES { .. } => 1,
+            Config::TDES { .. } => 2,
+            Config::CAST { .. } => 3,
+            Config::RC4 { .. } => 4,
+            Config::RC2 { .. } => 5,
+            Config::Blowfish { .. } => 6,
+        }
+    }
+}
+
+impl<'a> Config<'a> {
+    fn padding(&self) -> Padding {
+        match self {
+            Config::CAST { padding, .. } => *padding,
+            _ => Padding::None,
         }
     }
 
-    /// Builds the [`Cryptor`] configured for encrypting.
-    pub fn encryptor(self) -> Result<Cryptor<T>, CryptorError> {
-        self.build(Operation::Encrypt)
+    fn rounds(&self) -> usize {
+        0
     }
 
-    /// Builds the [`Cryptor`] configured for decrypting.
-    pub fn decryptor(self) -> Result<Cryptor<T>, CryptorError> {
-        self.build(Operation::Decrypt)
+    const fn mode(&self) -> u32 {
+        match self {
+            Config::AES128 { mode, .. } => *mode as u32,
+            Config::AES192 { mode, .. } => *mode as u32,
+            Config::AES256 { mode, .. } => *mode as u32,
+            Config::DES { mode, .. } => *mode as u32,
+            Config::TDES { mode, .. } => *mode as u32,
+            Config::CAST { mode, .. } => *mode as u32,
+            Config::RC4 { .. } => 9,
+            Config::RC2 { mode, .. } => *mode as u32,
+            Config::Blowfish { mode, .. } => *mode as u32,
+        }
     }
 
-    /// Enables PKCS#7 padding.
-    pub fn pkcs7_padding(mut self) -> Self {
-        self.padding = Padding::PKCS7;
-        self
+    fn iv_ptr(&self) -> Result<*const u8, CryptorError> {
+        let (mode, ptr) = match self {
+            Config::AES128 { mode, iv, .. } if iv.is_some() => (mode, iv.unwrap().as_ptr()),
+            Config::AES192 { mode, iv, .. } if iv.is_some() => (mode, iv.unwrap().as_ptr()),
+            Config::AES256 { mode, iv, .. } if iv.is_some() => (mode, iv.unwrap().as_ptr()),
+            Config::DES { mode, iv, .. } if iv.is_some() => (mode, iv.unwrap().as_ptr()),
+            Config::CAST { mode, iv, .. } if iv.is_some() => (mode, iv.unwrap().as_ptr()),
+            Config::RC2 { mode, iv, .. } if iv.is_some() => (mode, iv.unwrap().as_ptr()),
+            Config::Blowfish { mode, iv, .. } if iv.is_some() => (mode, iv.unwrap().as_ptr()),
+            _ => return Ok(std::ptr::null()),
+        };
+
+        if mode == &Mode::ECB {
+            Err(CryptorError::InitializationVectorPresent)
+        } else {
+            Ok(ptr)
+        }
     }
 
-    /// If you're certain you'd like to bypass using an iv for ciphers which
-    /// suport it, you can provide a an appropriately sized buffer initialised
-    /// with zeroes.
-    pub fn iv(mut self, iv: &'a [u8]) -> Self {
-        self.iv = Some(iv);
-        self
+    fn key(&self) -> &[u8] {
+        match self {
+            Config::AES128 { key, .. } => *key,
+            Config::AES192 { key, .. } => *key,
+            Config::AES256 { key, .. } => *key,
+            Config::DES { key, .. } => *key,
+            Config::TDES { key, .. } => *key,
+            Config::CAST { key, .. } => *key,
+            Config::RC4 { key, .. } => *key,
+            Config::RC2 { key, .. } => *key,
+            Config::Blowfish { key, .. } => *key,
+        }
     }
+}
 
-    /// Sets the number of rounds of encryption to use for ciphers which support
-    /// it.
-    // TODO: Which support it? Is it incorrect to use rounds for any of the
-    // ciphers?
-    pub fn rounds(mut self, rounds: usize) -> Self {
-        self.rounds = rounds;
-        self
+/// A cryptor supporting all of the block and stream ciphers provided by the
+/// common crypto library.
+///
+/// ```
+/// # use common_crypto::cryptor::{Config, Cryptor};
+/// let config = Config::RC4 { key: b"Key" };
+/// assert_eq!(
+///     Cryptor::encrypt(&config, b"Plaintext").unwrap(),
+///     &[0xbb, 0xf3, 0x16, 0xe8, 0xd9, 0x40, 0xaf, 0x0a, 0xd3]
+/// );
+/// ```
+
+#[derive(Debug)]
+pub struct Cryptor {
+    handle: CCCryptorRef,
+}
+
+impl<'a> Drop for Cryptor {
+    fn drop(&mut self) {
+        unsafe {
+            CCCryptorRelease(self.handle);
+        }
     }
+}
 
-    fn build(self, operation: Operation) -> Result<Cryptor<T>, CryptorError> {
+impl Cryptor {
+    fn new<'a>(config: &Config<'a>, operation: Operation) -> Result<Cryptor, CryptorError> {
         let mut handle: CCCryptorRef = std::ptr::null_mut();
-        let iv_ptr = iv_ptr_if_required::<T>(&self.iv, self.mode)?;
 
         let status = unsafe {
             CCCryptorCreateWithMode(
                 operation,
-                self.mode,
-                T::to_algorithm(),
-                self.padding,
-                iv_ptr as *const c_void,
-                self.key.as_ptr() as *const c_void,
-                self.key.len(),
-                // TODO: tweak
+                config.mode(),
+                config.into(),
+                config.padding(),
+                config.iv_ptr()? as *const c_void,
+                config.key().as_ptr() as *const c_void,
+                config.key().len(),
+                // Tweak is unsued
                 std::ptr::null(),
                 0,
-                self.rounds,
+                config.rounds(),
                 0,
                 &mut handle as *mut *mut c_void,
             )
@@ -325,63 +349,17 @@ where
             return Err(status.into());
         }
 
-        Ok(Cryptor {
-            handle,
-            mode: self.mode,
-            _private: PhantomData,
-        })
+        Ok(Cryptor { handle })
     }
-}
 
-fn iv_ptr_if_required<T>(iv: &Option<&[u8]>, mode: Mode) -> Result<*const u8, CryptorError>
-where
-    T: Cipher,
-{
-    let iv_ptr = match iv {
-        Some(iv) => {
-            if mode == Mode::ECB || !T::requires_iv() {
-                return Err(CryptorError::InitializationVectorPresent);
-            }
-
-            if T::block_size() != iv.len() {
-                return Err(CryptorError::InitializationVectorSize);
-            }
-
-            iv.as_ptr()
-        }
-        None => {
-            if mode != Mode::ECB && T::requires_iv() {
-                return Err(CryptorError::InitializationVectorMissing);
-            }
-
-            std::ptr::null()
-        }
-    };
-
-    Ok(iv_ptr)
-}
-
-/// A cryptor supporting all of the block and stream ciphers provided by the
-/// common crypto library.
-#[derive(Debug)]
-pub struct Cryptor<T> {
-    handle: CCCryptorRef,
-    mode: Mode,
-    _private: PhantomData<T>,
-}
-
-impl<T> Drop for Cryptor<T> {
-    fn drop(&mut self) {
-        unsafe {
-            CCCryptorRelease(self.handle);
-        }
+    pub fn new_encryptor<'a>(config: &Config<'a>) -> Result<Self, CryptorError> {
+        Self::new(config, Operation::Encrypt)
     }
-}
 
-impl<T> Cryptor<T>
-where
-    T: Cipher,
-{
+    pub fn new_decryptor<'a>(config: &Config<'a>) -> Result<Self, CryptorError> {
+        Self::new(config, Operation::Decrypt)
+    }
+
     /// Encrypts the data and writes to the provided buffer. The buffer will
     /// be resized as required, and will be cleared on error.
     pub fn update(
@@ -419,9 +397,8 @@ where
     }
 
     /// Finalises the encryption, returning any remaining data where
-    /// appropriate. The cryptor cannot be used again until it has been
-    /// [`FinishedCryptor::reset`].
-    pub fn finish(self, output: &mut Vec<u8>) -> Result<FinishedCryptor<T>, CryptorError> {
+    /// appropriate. The cryptor cannot be used again.
+    pub fn finish(self, output: &mut Vec<u8>) -> Result<(), CryptorError> {
         let mut written = 0usize;
 
         let status = unsafe {
@@ -440,37 +417,26 @@ where
 
         output.resize(written, 0);
 
-        Ok(FinishedCryptor { inner: self })
-    }
-
-    fn reset(&self, new_iv: Option<&[u8]>) -> Result<(), CryptorError> {
-        let iv_ptr = iv_ptr_if_required::<T>(&new_iv, self.mode)?;
-
-        let status = unsafe { CCCryptorReset(self.handle, iv_ptr as *const c_void) };
-
-        if status != Status::Success {
-            return Err(status.into());
-        }
-
         Ok(())
     }
 }
 
-/// A [`Cryptor`] that has been finalised, and which can't be used again until
-/// it has been reset.
-pub struct FinishedCryptor<T> {
-    inner: Cryptor<T>,
-}
+impl Cryptor {
+    pub fn encrypt<'a>(
+        config: &Config<'a>,
+        input: impl AsRef<[u8]>,
+    ) -> Result<Vec<u8>, CryptorError> {
+        let mut output = Vec::new();
+        Cryptor::new_encryptor(config)?.update(input, &mut output)?;
+        Ok(output)
+    }
 
-impl<T> FinishedCryptor<T>
-where
-    T: Cipher,
-{
-    /// Resets the state of the cryptor, allowing it to be reused. If you are
-    /// using a cipher which requires an iv, you should now generate a new one
-    /// if further encryption will be performed using the same key.
-    pub fn reset(self, new_iv: Option<&[u8]>) -> Result<Cryptor<T>, CryptorError> {
-        self.inner.reset(new_iv)?;
-        Ok(self.inner)
+    pub fn decrypt<'a>(
+        config: &Config<'a>,
+        input: impl AsRef<[u8]>,
+    ) -> Result<Vec<u8>, CryptorError> {
+        let mut output = Vec::new();
+        Cryptor::new_decryptor(config)?.update(input, &mut output)?;
+        Ok(output)
     }
 }

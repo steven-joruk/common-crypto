@@ -37,10 +37,12 @@ assert_eq!(decrypted, b"Hello");
 
 ## What's missing?
 
-* Streaming support for CCHMac
-* Single shot encryption and decryption for CCCryptor
+* Streaming support for CCHMac.
 * CC_MD*
 * CC_SHA*
+* Resetting cryptors - I don't see a use case for this, so I won't implement it.
+* Padding and rounds for cryptors. I want to make sure they're only configurable
+  where they're actually supported.
 
 ## Contributing
 
