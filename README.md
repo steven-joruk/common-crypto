@@ -6,12 +6,14 @@
 
 Bindings for Apple's Common Crypto APIs.
 
-## Example
+## Examples
 
 ```toml
 [dependencies]
 common-crypto = "0.2"
 ```
+
+### Cryptor
 
 ```rust
 let config = Config::AES256 {
@@ -23,6 +25,12 @@ let config = Config::AES256 {
 let encrypted = Cryptor::encrypt(&config, b"Hello").unwrap();
 let decrypted = Cryptor::decrypt(&config, encrypted).unwrap();
 assert_eq!(decrypted, b"Hello");
+```
+
+### HMAC
+
+```rust
+let auth_code = HMac::sha512(b"Key", b"Input");
 ```
 
 ## What's missing?
