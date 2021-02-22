@@ -49,7 +49,6 @@ let auth_code = HMAC::sha512(b"Key", b"Input");
 ## What's missing?
 
 * Streaming support for CCHMac.
-* CC_MD*
 * Resetting cryptors - I don't see a use case for this, so I won't implement it.
 * Padding and rounds for cryptors. I want to make sure they're only configurable
   where they're actually supported.

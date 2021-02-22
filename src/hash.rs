@@ -1,35 +1,5 @@
 use std::ffi::c_void;
 
-#[repr(C)]
-#[derive(Default)]
-struct SHA1Context {
-    h0: u32,
-    h1: u32,
-    h2: u32,
-    h3: u32,
-    h4: u32,
-    nl: u32,
-    nh: u32,
-    data: [u32; 16],
-    num: i32,
-}
-
-#[repr(C)]
-#[derive(Default)]
-struct SHA256Context {
-    count: [u32; 2],
-    hash: [u32; 8],
-    wbuf: [u32; 16],
-}
-
-#[repr(C)]
-#[derive(Default)]
-struct SHA512Context {
-    count: [u64; 2],
-    hash: [u64; 8],
-    wbuf: [u64; 16],
-}
-
 pub struct Hash;
 
 macro_rules! implement_hash {
@@ -91,6 +61,19 @@ macro_rules! implement_hash {
     };
 }
 
+#[repr(C)]
+#[derive(Default)]
+struct SHA1Context {
+    h0: u32,
+    h1: u32,
+    h2: u32,
+    h3: u32,
+    h4: u32,
+    nl: u32,
+    nh: u32,
+    data: [u32; 16],
+    num: i32,
+}
 implement_hash!(
     sha1,
     SHA1,
@@ -101,6 +84,14 @@ implement_hash!(
     CC_SHA1_Final,
     20
 );
+
+#[repr(C)]
+#[derive(Default)]
+struct SHA256Context {
+    count: [u32; 2],
+    hash: [u32; 8],
+    wbuf: [u32; 16],
+}
 
 implement_hash!(
     sha224,
@@ -124,6 +115,14 @@ implement_hash!(
     32
 );
 
+#[repr(C)]
+#[derive(Default)]
+struct SHA512Context {
+    count: [u64; 2],
+    hash: [u64; 8],
+    wbuf: [u64; 16],
+}
+
 implement_hash!(
     sha384,
     SHA384,
@@ -144,4 +143,72 @@ implement_hash!(
     CC_SHA512_Update,
     CC_SHA512_Final,
     64
+);
+
+#[repr(C)]
+#[derive(Default)]
+struct MD2Context {
+    num: i32,
+    data: [u8; 16],
+    cksm: [u32; 16],
+    state: [u32; 16],
+}
+
+implement_hash!(
+    md2,
+    MD2,
+    MD2Context,
+    CC_MD2,
+    CC_MD2_Init,
+    CC_MD2_Update,
+    CC_MD2_Final,
+    16
+);
+
+#[repr(C)]
+#[derive(Default)]
+struct MD4Context {
+    a: u32,
+    b: u32,
+    c: u32,
+    d: u32,
+    nl: u32,
+    nh: u32,
+    data: [u32; 16],
+    num: i32,
+}
+
+implement_hash!(
+    md4,
+    MD4,
+    MD4Context,
+    CC_MD4,
+    CC_MD4_Init,
+    CC_MD4_Update,
+    CC_MD4_Final,
+    16
+);
+
+#[repr(C)]
+#[derive(Default)]
+struct MD5Context {
+    a: u32,
+    b: u32,
+    c: u32,
+    d: u32,
+    nl: u32,
+    nh: u32,
+    data: [u32; 16],
+    num: i32,
+}
+
+implement_hash!(
+    md5,
+    MD5,
+    MD5Context,
+    CC_MD5,
+    CC_MD5_Init,
+    CC_MD5_Update,
+    CC_MD5_Final,
+    16
 );

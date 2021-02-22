@@ -39,3 +39,27 @@ fn sha512() {
         hex::decode("77c7ce9a5d86bb386d443bb96390faa120633158699c8844c30b13ab0bf92760b7e4416aea397db91b4ac0e5dd56b8ef7e4b066162ab1fdc088319ce6defc876").unwrap()
     );
 }
+
+#[test]
+fn md2() {
+    assert_eq!(
+        &Hash::md2(b"data")[..],
+        hex::decode("2eb9b7b30492034d392888f72ace81a1").unwrap()
+    );
+}
+
+#[test]
+fn md4() {
+    assert_eq!(
+        &Hash::md4(b"data")[..],
+        hex::decode("539080ba278cf4cf4db2e4a32642ff30").unwrap()
+    );
+}
+
+#[test]
+fn md5() {
+    assert_eq!(
+        &Hash::md5(b"data")[..],
+        hex::decode("8d777f385d3dfec8815d20f7496026dc").unwrap()
+    );
+}
