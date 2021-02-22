@@ -21,9 +21,9 @@ extern "C" {
     );
 }
 
-pub struct Hmac;
+pub struct HMAC;
 
-impl Hmac {
+impl HMAC {
     fn generate(algorithm: Algorithm, key: &[u8], data: &[u8], hash: &mut [u8]) {
         unsafe {
             CCHmac(
@@ -40,7 +40,7 @@ impl Hmac {
 
 macro_rules! declare_digest {
     ($name:ident, $algorithm:ident, $size:expr) => {
-        impl Hmac {
+        impl HMAC {
             pub fn $name(key: impl AsRef<[u8]>, data: impl AsRef<[u8]>) -> [u8; $size] {
                 let mut hash = [0u8; $size];
                 Self::generate(

@@ -43,7 +43,7 @@ let hash = hasher.finish();
 ### HMAC
 
 ```rust
-let auth_code = HMac::sha512(b"Key", b"Input");
+let auth_code = HMAC::sha512(b"Key", b"Input");
 ```
 
 ## What's missing?
