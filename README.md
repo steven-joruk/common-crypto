@@ -10,7 +10,7 @@ Bindings for Apple's Common Crypto APIs.
 
 ```toml
 [dependencies]
-common-crypto = "0.2"
+common-crypto = "0.3"
 ```
 
 ### Cryptor
@@ -34,7 +34,7 @@ let hash = Hash::sha256(b"data");
 ```
 
 ```rust
-let mut hasher = SHA256::new();
+let mut hasher = hash::SHA256::new();
 hasher.update(b"data");
 hasher.update(b"more data");
 let hash = hasher.finish();
@@ -46,9 +46,15 @@ let hash = hasher.finish();
 let auth_code = HMAC::sha512(b"Key", b"Input");
 ```
 
+```rust
+let mut hasher = hmac::SHA256::new(b"Key");
+hasher.update(b"data");
+hasher.update(b"more data");
+let hash = hasher.finish();
+```
+
 ## What's missing?
 
-* Streaming support for CCHMac.
 * Resetting cryptors - I don't see a use case for this, so I won't implement it.
 * Padding and rounds for cryptors. I want to make sure they're only configurable
   where they're actually supported.
