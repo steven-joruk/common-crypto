@@ -11,4 +11,4 @@ categories = ["os::macos-apis", "cryptography", "api-bindings"]
 readme = "README.md"
 
 [dev-dependencies]
-hex = "0.4"
+hex = "0.4.3"

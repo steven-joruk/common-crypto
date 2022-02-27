@@ -55,7 +55,8 @@ let hash = hasher.finish();
 
 ## What's missing?
 
-* Resetting cryptors - I don't see a use case for this, so I won't implement it.
+* Resetting cryptors - I don't see a use case for this, so I won't implement it
+  unless someone requests it.
 * Padding and rounds for cryptors. I want to make sure they're only configurable
   where they're actually supported.
 
