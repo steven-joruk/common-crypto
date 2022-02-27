@@ -139,21 +139,20 @@ enum Status {
     InvalidKey = -4311,
 }
 
-impl Into<CryptorError> for Status {
-    fn into(self) -> CryptorError {
-        match self {
-            Status::Success => unreachable!(),
-            Status::ParamError => CryptorError::Param,
-            Status::MemoryFailure => CryptorError::Memory,
-            Status::AlignmentError => CryptorError::Alignment,
-            Status::DecodeError => CryptorError::Decode,
-            Status::Unimplemented => CryptorError::Unimplemented,
-            Status::RNGFailure => CryptorError::RNGFailure,
-            Status::UnspecifiedError => CryptorError::Unspecified,
-            Status::CallSequenceError => CryptorError::CallSequence,
-            Status::KeySizeError => CryptorError::KeySize,
-            Status::InvalidKey => CryptorError::Key,
-            _ => CryptorError::Unexpected(self as i32),
+impl From<Status> for CryptorError {
+    fn from(status: Status) -> Self {
+        match status {
+            Status::ParamError => Self::Param,
+            Status::MemoryFailure => Self::Memory,
+            Status::AlignmentError => Self::Alignment,
+            Status::DecodeError => Self::Decode,
+            Status::Unimplemented => Self::Unimplemented,
+            Status::RNGFailure => Self::RNGFailure,
+            Status::UnspecifiedError => Self::Unspecified,
+            Status::CallSequenceError => Self::CallSequence,
+            Status::KeySizeError => Self::KeySize,
+            Status::InvalidKey => Self::Key,
+            _ => Self::Unexpected(status as i32),
         }
     }
 }
@@ -324,7 +323,7 @@ impl<'a> Drop for Cryptor {
 }
 
 impl Cryptor {
-    fn new<'a>(config: &Config<'a>, operation: Operation) -> Result<Cryptor, CryptorError> {
+    fn new(config: &Config<'_>, operation: Operation) -> Result<Cryptor, CryptorError> {
         let mut handle: CCCryptorRef = std::ptr::null_mut();
 
         let status = unsafe {
@@ -352,11 +351,11 @@ impl Cryptor {
         Ok(Cryptor { handle })
     }
 
-    pub fn new_encryptor<'a>(config: &Config<'a>) -> Result<Self, CryptorError> {
+    pub fn new_encryptor(config: &Config<'_>) -> Result<Self, CryptorError> {
         Self::new(config, Operation::Encrypt)
     }
 
-    pub fn new_decryptor<'a>(config: &Config<'a>) -> Result<Self, CryptorError> {
+    pub fn new_decryptor(config: &Config<'_>) -> Result<Self, CryptorError> {
         Self::new(config, Operation::Decrypt)
     }
 
@@ -422,19 +421,13 @@ impl Cryptor {
 }
 
 impl Cryptor {
-    pub fn encrypt<'a>(
-        config: &Config<'a>,
-        input: impl AsRef<[u8]>,
-    ) -> Result<Vec<u8>, CryptorError> {
+    pub fn encrypt(config: &Config<'_>, input: impl AsRef<[u8]>) -> Result<Vec<u8>, CryptorError> {
         let mut output = Vec::new();
         Cryptor::new_encryptor(config)?.update(input, &mut output)?;
         Ok(output)
     }
 
-    pub fn decrypt<'a>(
-        config: &Config<'a>,
-        input: impl AsRef<[u8]>,
-    ) -> Result<Vec<u8>, CryptorError> {
+    pub fn decrypt(config: &Config<'_>, input: impl AsRef<[u8]>) -> Result<Vec<u8>, CryptorError> {
         let mut output = Vec::new();
         Cryptor::new_decryptor(config)?.update(input, &mut output)?;
         Ok(output)

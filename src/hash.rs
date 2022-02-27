@@ -27,6 +27,7 @@ macro_rules! implement_hash {
             }
         }
 
+        #[derive(Default)]
         pub struct $struct {
             ctx: $ctx,
         }
