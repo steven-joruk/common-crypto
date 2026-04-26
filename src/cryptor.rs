@@ -51,7 +51,7 @@ unsafe extern "C" {
         key_length: usize,
         tweak: *const c_void,
         tweak_length: usize,
-        rounds: usize,
+        rounds: i32,
         options: u32,
         handle: *mut CCCryptorRef,
     ) -> Status;
@@ -245,7 +245,7 @@ impl<'a> Config<'a> {
         }
     }
 
-    fn rounds(&self) -> usize {
+    fn rounds(&self) -> i32 {
         0
     }
 
@@ -395,26 +395,29 @@ impl Cryptor {
         Ok(())
     }
 
-    /// Finalises the encryption, returning any remaining data where
-    /// appropriate. The cryptor cannot be used again.
+    /// Finalises the encryption, appending any remaining data to `output`
+    /// where appropriate. The cryptor cannot be used again.
     pub fn finish(self, output: &mut Vec<u8>) -> Result<(), CryptorError> {
         let mut written = 0usize;
+        let initial_len = output.len();
+        let extra = unsafe { CCCryptorGetOutputLength(self.handle, 0, true) };
+        output.resize(initial_len + extra, 0);
 
         let status = unsafe {
             CCCryptorFinal(
                 self.handle,
-                output.as_mut_ptr() as *mut c_void,
-                output.capacity(),
+                output.as_mut_ptr().add(initial_len) as *mut c_void,
+                extra,
                 &mut written as *mut usize,
             )
         };
 
         if status != Status::Success {
-            output.clear();
+            output.truncate(initial_len);
             return Err(status.into());
         }
 
-        output.resize(written, 0);
+        output.truncate(initial_len + written);
 
         Ok(())
     }
@@ -422,14 +425,18 @@ impl Cryptor {
 
 impl Cryptor {
     pub fn encrypt(config: &Config<'_>, input: impl AsRef<[u8]>) -> Result<Vec<u8>, CryptorError> {
+        let cryptor = Cryptor::new_encryptor(config)?;
         let mut output = Vec::new();
-        Cryptor::new_encryptor(config)?.update(input, &mut output)?;
+        cryptor.update(input, &mut output)?;
+        cryptor.finish(&mut output)?;
         Ok(output)
     }
 
     pub fn decrypt(config: &Config<'_>, input: impl AsRef<[u8]>) -> Result<Vec<u8>, CryptorError> {
+        let cryptor = Cryptor::new_decryptor(config)?;
         let mut output = Vec::new();
-        Cryptor::new_decryptor(config)?.update(input, &mut output)?;
+        cryptor.update(input, &mut output)?;
+        cryptor.finish(&mut output)?;
         Ok(output)
     }
 }
