@@ -40,7 +40,7 @@ pub enum Padding {
 
 type CCCryptorRef = *mut c_void;
 
-extern "C" {
+unsafe extern "C" {
     fn CCCryptorCreateWithMode(
         operation: Operation,
         mode: u32,

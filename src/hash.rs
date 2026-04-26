@@ -4,7 +4,7 @@ pub struct Hash;
 
 macro_rules! implement_hash {
     ($func:ident, $struct:ident, $ctx:ident, $one_shot:ident, $init:ident, $update:ident, $final:ident, $len:expr) => {
-        extern "C" {
+        unsafe extern "C" {
             fn $one_shot(data: *const c_void, len: i32, output: *mut u8) -> *mut u8;
             fn $init(ctx: *mut $ctx) -> i32;
             fn $update(ctx: *mut $ctx, data: *const c_void, len: i32) -> i32;

@@ -21,7 +21,7 @@ impl Default for Context {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     fn CCHmac(
         algorithm: Algorithm,
         key: *const c_void,
